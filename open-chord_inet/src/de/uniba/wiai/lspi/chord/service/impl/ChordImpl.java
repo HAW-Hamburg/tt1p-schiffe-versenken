@@ -31,8 +31,13 @@ import static de.uniba.wiai.lspi.util.logging.Logger.LogLevel.DEBUG;
 import static de.uniba.wiai.lspi.util.logging.Logger.LogLevel.INFO;
 
 import java.io.Serializable;
+import java.math.BigInteger;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.Comparator;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Random;
 import java.util.Set;
 import java.util.concurrent.Executor;
 import java.util.concurrent.ExecutorService;
@@ -1114,12 +1119,40 @@ public final class ChordImpl implements Chord, Report, AsynChord {
 	// TODO: implement this function in TTP 
 	//send broadcast to all nodes in finger table
 	@Override
-	public void broadcast (ID target, Boolean hit) {
+	public void broadcast (ID target, Boolean hit) 
+	{
+		// FingerTable sortiert.
+		List<Node>fingerTable = this.getFingerTable();
+		Collections.sort(fingerTable, new Comparator<Node>() {
+			@Override
+			public int compare(Node o1, Node o2) {
+				return o1.compareTo(o2);
+			}
+		});
 		
-		this.logger.debug("App called broadcast");
-		
-		
-		
+		// FingerTable iterieren und Nachricht senden.
+		for(int i = 0; i < fingerTable.size(); i++)
+		{
+			ID rangeHash;
+			if (i == fingerTable.size() - 1)
+			{
+				// Letzter Eintrag im FingerTable.
+				rangeHash = this.getPredecessorID();
+			}
+			else
+			{
+				// Eintrag im FingerTable.
+				rangeHash = fingerTable.get(i + 1).getNodeID();
+			}
+			
+			Broadcast broadCast = new Broadcast(rangeHash, getID(), target, (new Random()).nextInt(), hit);
+			try {
+				fingerTable.get(i).broadcast(broadCast);
+			} catch (CommunicationException e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
+		}		
 	}
 	
 	public void setCallback (NotifyCallback callback) {
